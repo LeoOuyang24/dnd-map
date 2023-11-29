@@ -4,7 +4,7 @@ import { loadSprite, renderSprite} from "./load-sprite.js"
 import { Camera } from "./controls.js"
 
 
-import { mat4 } from 'gl-matrix';
+import * as mat4 from './mat4.js';
 
 main();
 
