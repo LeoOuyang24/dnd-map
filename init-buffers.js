@@ -16,7 +16,6 @@ function initBuffer(gl, shaderProgram,array, amount, variable) {
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
   const loc = gl.getAttribLocation(shaderProgram, variable);
-  console.log(loc, variable)
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc,
       amount,  

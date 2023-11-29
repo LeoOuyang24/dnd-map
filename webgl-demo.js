@@ -1,17 +1,22 @@
 import { initBuffer } from "./init-buffers.js";
 import { drawScene } from "./draw-scene.js";
 import { loadSprite, renderSprite} from "./load-sprite.js"
-import {getOrtho, getView} from "./matrices.js"
+import { Camera } from "./controls.js"
+
+
+import { mat4 } from 'gl-matrix';
 
 main();
 
 //
 // start here
 //
-function main() {
-  const canvas = document.querySelector("#glcanvas");
-  // Initialize the GL context
-  const gl = canvas.getContext("webgl");
+
+function init(gl, canvas)
+{
+   // Initialize the GL context
+
+  gl.clearColor(0.0, 0.0, 0.0, 1.0); // Clear to black, fully opaque
 
   // Only continue if WebGL is available and working
   if (gl === null) {
@@ -49,24 +54,19 @@ void main() {
   // Initialize a shader program; this is where all the lighting
   // for the vertices and so forth is established.
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-
+  const viewMatrix = mat4.create();
+  const projectionMatrix = mat4.create();
   // Set uniform
   gl.useProgram(shaderProgram);
   gl.uniform2f(gl.getUniformLocation(shaderProgram, 'screenSize'), canvas.width, canvas.height);
-  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'projection'),false,getOrtho(0,640,0,640,-10,10))//getPerspective(Math.pi/4,canvas.width/canvas.height,1,100));
-  //gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'view'),false,[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])//getPerspective(Math.pi/4,canvas.width/canvas.height,1,100));
-  
-  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'view'),false,getView([0,0,1],[0,0,0],[0,1,0]));
-console.log(getView([0,0,10],[0,0,0],[0,1,0]))
+  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'projection'),false,mat4.ortho(projectionMatrix,0,640,640,0,-10,10))//getPerspective(Math.pi/4,canvas.width/canvas.height,1,100));
+  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'view'),false,mat4.lookAt(viewMatrix,[0,0,10],[0,0,0],[0,1,0]));
 
-  // Here's where we call the routine that builds all the
-  // objects we'll be drawing.
-  //initBuffer(gl,shaderProgram,[0,0],2,"spritePosition");
-  //initBuffer(gl,shaderProgram,[640.0],1,"size");
+  return shaderProgram
+}
 
+function render(gl, canvas, shaderProgram, camera){
 
-  // Draw the scene
-  gl.clearColor(0.0, 0.0, 0.0, 1.0); // Clear to black, fully opaque
   gl.clearDepth(1.0); // Clear everything
   gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -74,12 +74,60 @@ console.log(getView([0,0,10],[0,0,0],[0,1,0]))
 
   let text = loadSprite(gl,img)
   let dinosaur = loadSprite(gl,document.getElementById('dinosaur'))
-  renderSprite(gl,shaderProgram,text,{"pos": [0,0,0],"size": [640.0]})
+  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'view'),false,mat4.lookAt(mat4.create(),[camera.camera[0],camera.camera[1],10],[camera.camera[0],camera.camera[1],0],[0,1,0]));
+
+  renderSprite(gl,shaderProgram,text,{"pos": [320,320,0],"size": [640.0]})
   renderSprite(gl,shaderProgram,dinosaur,{"pos": [640,640,1],"size": [64.0]})
+}
+
+function main() {
+
+const canvas = document.getElementById("glcanvas");
+
+const gl = canvas.getContext("webgl");
 
 
+ 
+let shaderProgram = init(gl,canvas)
+
+let camera = new Camera([0,0])
+document.addEventListener("mousedown", camera.handleMouseDown);
+document.addEventListener("mouseup",camera.handleMouseUp)
+document.addEventListener("mousemove",(event) => {
+                                        camera.handleMouseMove(event); 
+                                        //gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram,'view'),false,mat4.lookAt(viewMatrix,[camera.camera[0],camera.camera[1],10],[camera.camera[0],camera.camera[1],0],[0,1,0]));
+                                        const start = new Date()
+
+                                        render(gl, canvas,shaderProgram, camera)
+                                        const lag = new Date() - start
+                                        console.log(`Lag: \t${lag} ms. `)
+                                        console.log(camera.camera)
+
+                                      })
+
+const start = new Date()
+setTimeout(() => {
+  const lag = new Date() - start
+  console.log(`Lag: \t${lag} ms`)
+})
+  // Draw the scene
+render(gl,canvas, shaderProgram, camera)
   //drawScene(gl, shaderProgram);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //
 // Initialize a shader program, so WebGL knows how to draw our data
